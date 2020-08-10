@@ -26,6 +26,7 @@ wallet_private_key   = index_conf["wallet_private_key"].strip()
 receiving_address    = index_conf["receiving_address"].strip()
 registered_url       = index_conf["registered_url"].strip()
 INTERVAL             = int(index_conf["INTERVAL"].strip())
+remote_node          = index_conf["remote_node"]
 ###########################################################################################
 
 GAS                  = 8000000
@@ -437,9 +438,12 @@ class Logger:
 
 
 if __name__ == "__main__":
-    vns_pos = VnsPos(wallet_address, wallet_private_key, receiving_address, registered_url, GAS, StakeAmount, VALIDATORS_PER_NET)
+    if  int(remote_node["available"]):
+        vns_pos = VnsPos(wallet_address, wallet_private_key, receiving_address, registered_url, GAS, StakeAmount, VALIDATORS_PER_NET, remote_node["url"])
+    else:
+        vns_pos = VnsPos(wallet_address, wallet_private_key, receiving_address, registered_url, GAS, StakeAmount, VALIDATORS_PER_NET)
+        vns_pos.check_net()
     logyyx = vns_pos.logyyx
-    vns_pos.check_net()
     vns_pos.check_address()
     pre_period  = 0
     contract = vns_pos.pos_contract()
