@@ -18,11 +18,14 @@ import logging
 
  
 ###########################################################################################
-wallet_address       = "0x"
-wallet_private_key   = "0x"
-receiving_address    = "0x"
-registered_url       = "http://10.10.8.8:8585"
-INTERVAL             = 60 * 10
+with open("vns_pos_index.conf", encoding="utf-8") as f:
+    index_conf = json.load(f)
+
+wallet_address       = index_conf["wallet_address"].strip()
+wallet_private_key   = index_conf["wallet_private_key"].strip()
+receiving_address    = index_conf["receiving_address"].strip()
+registered_url       = index_conf["registered_url"].strip()
+INTERVAL             = int(index_conf["INTERVAL"].strip())
 ###########################################################################################
 
 GAS                  = 8000000
@@ -32,7 +35,7 @@ VALIDATORS_PER_NET   = 9
 
 
 class VnsPos:
-    def __init__(self, wallet_address, wallet_private_key, receiving_address, registered_url, GAS, StakeAmount, VALIDATORS_PER_NET):
+    def __init__(self, wallet_address, wallet_private_key, receiving_address, registered_url, GAS, StakeAmount, VALIDATORS_PER_NET, URL = "http://localhost:8585"):
         self.wallet_address = Web3.toChecksumAddress(wallet_address)
         self.wallet_private_key = wallet_private_key
         self.receiving_address = receiving_address
@@ -41,7 +44,7 @@ class VnsPos:
         self.StakeAmount = StakeAmount
         self.VALIDATORS_PER_NET = VALIDATORS_PER_NET
         self.contract_address = Web3.toChecksumAddress("0xd149ab836147a1edaf1f223c9afdca7b29ecf1fd")
-        self.w3 = Web3(HTTPProvider("http://localhost:8585"))
+        self.w3 = Web3(HTTPProvider(URL))
         self.job_pool = {'claim':{}, 'prove':{}, 'prepare':{}}
         self.shit_pool = {'checkin':{}, 'feedback':{}}
         self.logyyx = Logger('vns_pos.log', logging.INFO, logging.INFO)
@@ -284,7 +287,8 @@ class VnsPos:
                             "id": 1\
                         }
                 #code = requests.post(self.registered_url, data=json.dumps(proof_req), headers=headers).text #TODO
-                code = requests.post('http://localhost:8585', data=json.dumps(proof_req), headers=headers).text
+                code = requests.post(URL, data=json.dumps(proof_req), headers=headers).text
+                #print(code)
                 json_code = json.loads(code)
                 b = HexBytes(json_code["result"])
                 encodedABI = self.contract.encodeABI(fn_name="prove", args = [i, tx_height, b])
@@ -453,7 +457,7 @@ if __name__ == "__main__":
             time.sleep(120)
             continue
         time.sleep(3)
-        logyyx.info("--------------------------------------".format(current_period))
+        logyyx.info("--------------------------------------")
         try:
             current_starttime = vns_pos.starttime_call()
             current_endtime = vns_pos.endtime_call()
@@ -481,13 +485,13 @@ if __name__ == "__main__":
             logyyx.error(traceback.format_exc())
         time.sleep(2)
         try:
-            vns_pos.try_txjob()
+            vns_pos.try_netjob()
         except Exception as e: 
             logyyx.error(e.args)
             logyyx.error(traceback.format_exc())
         time.sleep(2)
         try:
-            vns_pos.try_netjob()
+            vns_pos.try_txjob()
         except Exception as e: 
             logyyx.error(e.args)
             logyyx.error(traceback.format_exc())
@@ -501,7 +505,7 @@ if __name__ == "__main__":
             logyyx.error(e.args)
             logyyx.error(traceback.format_exc())
         """
-        #time.sleep(10)
+        #time.sleep(20)
         time.sleep(INTERVAL)
 
 
