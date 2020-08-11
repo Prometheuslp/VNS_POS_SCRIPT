@@ -164,7 +164,7 @@ class VnsPos:
             txn_hash = self.w3.eth.sendRawTransaction(signed_txn.rawTransaction.hex())
         except Exception as e: 
             self.logyyx.error(e.args)
-            self.logyyx.error(traceback.format_exc())
+            #self.logyyx.error(traceback.format_exc())
             return 1, e.args
         return 0, txn_hash.hex()
 
@@ -347,7 +347,7 @@ class VnsPos:
                         except Exception as e: 
                             self.feedbackFunc(i, server_address, millisecond);
                             self.logyyx.error(e.args)
-                            self.logyyx.error(traceback.format_exc())
+                            #self.logyyx.error(traceback.format_exc())
                         try:
                             del self.shit_pool["checkin"][server_address]
                         except Exception as e: 
