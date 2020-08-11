@@ -345,8 +345,8 @@ class VnsPos:
                                 millisecond = end - start
                                 self.feedbackFunc(i, server_address, millisecond)
                         except Exception as e: 
-                            self.feedbackFunc(i, server_address, millisecond);
                             self.logyyx.error(e.args)
+                            #self.feedbackFunc(i, server_address, millisecond);
                             #self.logyyx.error(traceback.format_exc())
                         try:
                             del self.shit_pool["checkin"][server_address]
@@ -513,11 +513,11 @@ if __name__ == "__main__":
                     send_info = ""
                     send_info += "pos starttime : {}".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(current_starttime))) + '\n'
                     send_info += "pos endtime : {}".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(current_endtime))) + "\n"
+                    send_info += "pos divNumber : {}".format(current_divNumber) + "\n"
+                    send_info += "pos dividend : {}".format(current_dividend) + "\n"
                     send_info += "pos period : {}".format(current_period) + "\n"
                     send_info += "pos score1 : {}".format(current_score1) + "\n"
                     send_info += "pos score2 : {}".format(current_score2) + "\n"
-                    send_info += "pos dividend : {}".format(current_dividend) + "\n"
-                    send_info += "pos divNumber : {}".format(current_divNumber) + "\n"
                     email.send(send_info)
         except Exception as e: 
             logyyx.error(e.args)
