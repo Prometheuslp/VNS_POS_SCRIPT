@@ -15,6 +15,9 @@ import urllib.request
 import requests
 from hexbytes import HexBytes
 import logging
+import smtplib
+from email.mime.text import MIMEText
+from email.header import Header
 
  
 ###########################################################################################
@@ -27,6 +30,7 @@ receiving_address    = index_conf["receiving_address"].strip()
 registered_url       = index_conf["registered_url"].strip()
 INTERVAL             = int(index_conf["INTERVAL"].strip())
 remote_node          = index_conf["remote_node"]
+email_info           = index_conf["email"]
 ###########################################################################################
 
 GAS                  = 8000000
@@ -398,11 +402,14 @@ class VnsPos:
         return self.contract
 
     def score1_call(self):
-        score1 = self.contract.functions.score1().call()
+        server_info = self.contract.functions.get_server(self.wallet_address).call()
+        score1 = server_info[-9]
         return score1
 
+
     def score2_call(self):
-        score2 = self.contract.functions.score2().call()
+        server_info = self.contract.functions.get_server(self.wallet_address).call()
+        score2 = server_info[-8]
         return score2
 
     def starttime_call(self):
@@ -425,6 +432,29 @@ class VnsPos:
         server_info = self.contract.functions.get_server(self.wallet_address).call()
         dividend = server_info[10]
         return dividend
+
+class Mail:
+    def __init__(self, sender, receiver, mail_pass, mail_host = "smtp.qq.com"):
+        self.mail_host = mail_host
+        self.mail_pass = mail_pass
+        self.sender = sender
+        self.receiver = [receiver]
+    def send(self, content):
+        content = content
+        message = MIMEText(content, 'plain', 'utf-8')
+        message['From'] = Header(self.sender, 'utf-8')
+        message['To'] =  Header(self.receiver[0], 'utf-8')
+        subject = 'VNS POS'
+        message['Subject'] = Header(subject, 'utf-8')
+        try:
+            smtpObj = smtplib.SMTP_SSL(self.mail_host, 465)
+            smtpObj.login(self.sender,self.mail_pass)
+            smtpObj.sendmail(self.sender, self.receiver, message.as_string())
+            smtpObj.quit()
+            print('Mail sent successfully')
+        except smtplib.SMTPException as e:
+            print('Failed to send mail')
+
 
 class Logger:
     def __init__(self, path, clevel=logging.INFO, Flevel=logging.INFO):
@@ -457,66 +487,77 @@ if __name__ == "__main__":
     else:
         vns_pos = VnsPos(wallet_address, wallet_private_key, receiving_address, registered_url, GAS, StakeAmount, VALIDATORS_PER_NET)
         vns_pos.check_net()
+    if(sys.argv[-1] == 'register'):
+        vns_pos.try_register()
+        exit(0)
+    if  int(email_info["available"]):
+        email = Mail(email_info["from"], email_info["to"], email_info["pd"], email_info["host"])
     logyyx = vns_pos.logyyx
     vns_pos.check_address()
     pre_period  = 0
     contract = vns_pos.pos_contract()
-    if(sys.argv[-1] == 'register'):
-        vns_pos.try_register()
-        exit(0)
-    #transfer_filter = contract.events.Claim.createFilter(fromBlock="0x0")
     while 1:
         try:
             current_period = vns_pos.period_call()
-            if current_period > pre_period:
-                vns_pos.pool_init()
-                pre_period = current_period
-                logyyx.info("pos period: {}".format(current_period))
-        except Exception as e: 
-            logyyx.error(e.args)
-            logyyx.error(traceback.format_exc())
-            time.sleep(120)
-            continue
-        time.sleep(3)
-        logyyx.info("--------------------------------------")
-        try:
             current_starttime = vns_pos.starttime_call()
             current_endtime = vns_pos.endtime_call()
             current_dividend = vns_pos.dividend_call()
             current_divNumber = vns_pos.divNumber_call()
-            logyyx.info("pos starttime  : {}".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(current_starttime))))
-            logyyx.info("pos endtime    : {}".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(current_endtime))))
-            logyyx.info("pos period     : {}".format(current_period))
-            logyyx.info("pos dividend   : {}".format(current_dividend))
-            logyyx.info("pos divNumber  : {}".format(current_divNumber))
+            current_score1 = vns_pos.score1_call()
+            current_score2 = vns_pos.score2_call()
+            if current_period > pre_period:
+                vns_pos.pool_init()
+                pre_period = current_period
+                logyyx.info("pos period: {}".format(current_period))
+                if int(email_info["available"]):
+                    send_info = ""
+                    send_info += "pos starttime : {}".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(current_starttime))) + '\n'
+                    send_info += "pos endtime : {}".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(current_endtime))) + "\n"
+                    send_info += "pos period : {}".format(current_period) + "\n"
+                    send_info += "pos score1 : {}".format(current_score1) + "\n"
+                    send_info += "pos score2 : {}".format(current_score2) + "\n"
+                    send_info += "pos dividend : {}".format(current_dividend) + "\n"
+                    send_info += "pos divNumber : {}".format(current_divNumber) + "\n"
+                    email.send(send_info)
         except Exception as e: 
             logyyx.error(e.args)
             logyyx.error(traceback.format_exc())
-        time.sleep(2)
+            if int(email_info["available"]):
+                email.send(str(traceback.format_exc()))
+            time.sleep(120)
+            continue
+        time.sleep(1)
+        logyyx.info("--------------------------------------")
+        logyyx.info("pos starttime  : {}".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(current_starttime))))
+        logyyx.info("pos endtime    : {}".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(current_endtime))))
+        logyyx.info("pos period     : {}".format(current_period))
+        logyyx.info("pos dividend   : {}".format(current_dividend))
+        logyyx.info("pos divNumber  : {}".format(current_divNumber))
+        time.sleep(1)
         try:
             vns_pos.claim_reward()
         except Exception as e: 
             logyyx.error(e.args)
             logyyx.error(traceback.format_exc())
-        time.sleep(2)
+        time.sleep(1)
         try:
             vns_pos.try_open()
         except Exception as e: 
             logyyx.error(e.args)
             logyyx.error(traceback.format_exc())
-        time.sleep(2)
+        time.sleep(1)
         try:
             vns_pos.try_netjob()
         except Exception as e: 
             logyyx.error(e.args)
             logyyx.error(traceback.format_exc())
-        time.sleep(2)
+        time.sleep(1)
         try:
             vns_pos.try_txjob()
         except Exception as e: 
             logyyx.error(e.args)
             logyyx.error(traceback.format_exc())
-        time.sleep(2)
+        time.sleep(1)
         """
         try:
             claim_info = transfer_filter.get_new_entries()
