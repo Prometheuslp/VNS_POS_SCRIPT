@@ -39,7 +39,7 @@ class VnsPos:
     def __init__(self, wallet_address, wallet_private_key, receiving_address, registered_url, GAS, StakeAmount, VALIDATORS_PER_NET, URL = "http://localhost:8585"):
         self.wallet_address = Web3.toChecksumAddress(wallet_address)
         self.wallet_private_key = wallet_private_key
-        self.receiving_address = receiving_address
+        self.receiving_address = Web3.toChecksumAddress(receiving_address)
         self.registered_url = registered_url
         self.GAS = GAS
         self.StakeAmount = StakeAmount
@@ -380,6 +380,20 @@ class VnsPos:
                 else:
                     self.job_pool['prepare'] = {}
 
+    def try_register(self):
+        server_info = self.contract.functions.get_server(self.wallet_address).call()
+        if (int(server_info[0]) < 1):
+            self.logyyx.info("I haven't registered yet, try registering...")
+            encodedABI = self.contract.encodeABI(fn_name="register", args = [self.registered_url, self.receiving_address])
+            nonce = self.get_nonce(self.wallet_address)
+            value = Web3.toWei(self.StakeAmount, 'ether')
+            self.send_tx(value, Web3.toWei(50,'gwei'), nonce, encodedABI)
+        else:
+            self.logyyx.info("I have registered")
+
+
+
+
     def pos_contract(self):
         return self.contract
 
@@ -447,6 +461,9 @@ if __name__ == "__main__":
     vns_pos.check_address()
     pre_period  = 0
     contract = vns_pos.pos_contract()
+    if(sys.argv[-1] == 'register'):
+        vns_pos.try_register()
+        exit(0)
     #transfer_filter = contract.events.Claim.createFilter(fromBlock="0x0")
     while 1:
         try:
