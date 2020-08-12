@@ -482,18 +482,33 @@ class Logger:
         self.logger.critical(message)
 
 
-def log_loop(event_filter, poll_interval, logyyx, email, available):
+def log_loop(poll_interval, logyyx, email, available, wallet_address, contract):
+    #transfer_filter = contract.events.Claim.createFilter(fromBlock="0x0", argument_filters={'server':wallet_address})
+    transfer_filter = contract.events.Claim.createFilter(fromBlock="0x0")
     count = 0
     while True:
-        logs = event_filter.get_new_entries()
+        try:
+            logs = transfer_filter.get_new_entries()
+            count = 0 if (count > 10) else count
+            if not (count % 8):
+                logyyx.info("Querying reward.")
+            for event in logs:
+                server = event.args.server
+                value = event.args.value
+                value = value / 1e+18
+                info = {"server":server, "value":value}
+                logyyx.info(info)
+                if wallet_address.upper() == server.upper():
+                    logyyx.info(str(info))
+                    if int(available):
+                        email.send(str(info))
+        except Exception as e: 
+            logyyx.error(e.args)
+            try:
+                transfer_filter = contract.events.Claim.createFilter(fromBlock="0x0")
+            except Exception as e: 
+                pass
         count += 1
-        count = 0 if (count > 10) else count
-        if not (count % 5):
-            logyyx.info("Querying reward.")
-        if logs:
-            logyyx.info(logs)
-            if int(available):
-                email.send(logs)
         time.sleep(poll_interval)
 
 
@@ -513,9 +528,7 @@ if __name__ == "__main__":
     pre_period  = 0
     contract = vns_pos.pos_contract()
     try:
-        transfer_filter = contract.events.Claim.createFilter(fromBlock="0x0")
-        logs = transfer_filter.get_new_entries()
-        worker = Thread(target=log_loop, args=(transfer_filter, 60, logyyx, email, email_info["available"]), daemon=True)
+        worker = Thread(target=log_loop, args=(60, logyyx, email, email_info["available"], wallet_address,contract), daemon=True)
         worker.start()
     except Exception as e: 
         logyyx.error(e.args)
@@ -582,7 +595,6 @@ if __name__ == "__main__":
         except Exception as e: 
             logyyx.error(e.args)
             logyyx.error(traceback.format_exc())
-        time.sleep(1)
         #time.sleep(60)
         time.sleep(INTERVAL)
 
