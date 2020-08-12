@@ -18,6 +18,7 @@ import logging
 import smtplib
 from email.mime.text import MIMEText
 from email.header import Header
+from threading import Thread
 
  
 ###########################################################################################
@@ -481,6 +482,21 @@ class Logger:
         self.logger.critical(message)
 
 
+def log_loop(event_filter, poll_interval, logyyx, email, available):
+    count = 0
+    while True:
+        logs = event_filter.get_new_entries()
+        count += 1
+        count = 0 if (count > 10) else count
+        if not (count % 5):
+            logyyx.info("Querying reward.")
+        if logs:
+            logyyx.info(logs)
+            if int(available):
+                email.send(logs)
+        time.sleep(poll_interval)
+
+
 if __name__ == "__main__":
     if  int(remote_node["available"]):
         vns_pos = VnsPos(wallet_address, wallet_private_key, receiving_address, registered_url, GAS, StakeAmount, VALIDATORS_PER_NET, remote_node["url"])
@@ -496,7 +512,15 @@ if __name__ == "__main__":
     vns_pos.check_address()
     pre_period  = 0
     contract = vns_pos.pos_contract()
-    transfer_filter = contract.events.Claim.createFilter(fromBlock="0x0")
+    try:
+        transfer_filter = contract.events.Claim.createFilter(fromBlock="0x0")
+        logs = transfer_filter.get_new_entries()
+        worker = Thread(target=log_loop, args=(transfer_filter, 60, logyyx, email, email_info["available"]), daemon=True)
+        worker.start()
+    except Exception as e: 
+        logyyx.error(e.args)
+        logyyx.error(traceback.format_exc())
+    time.sleep(1)
     while 1:
         try:
             current_period = vns_pos.period_call()
@@ -559,17 +583,7 @@ if __name__ == "__main__":
             logyyx.error(e.args)
             logyyx.error(traceback.format_exc())
         time.sleep(1)
-        try:
-            logs = transfer_filter.get_new_entries()
-            if logs:
-                logyyx.info(logs)
-                if int(email_info["available"]):
-                    email.send(str(logs))
-        except Exception as e: 
-            logyyx.error(e.args)
-            logyyx.error(traceback.format_exc())
-        time.sleep(1)
-        #time.sleep(20)
+        #time.sleep(60)
         time.sleep(INTERVAL)
 
 
