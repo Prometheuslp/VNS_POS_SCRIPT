@@ -496,6 +496,7 @@ if __name__ == "__main__":
     vns_pos.check_address()
     pre_period  = 0
     contract = vns_pos.pos_contract()
+    transfer_filter = contract.events.Claim.createFilter(fromBlock="0x0")
     while 1:
         try:
             current_period = vns_pos.period_call()
@@ -558,15 +559,16 @@ if __name__ == "__main__":
             logyyx.error(e.args)
             logyyx.error(traceback.format_exc())
         time.sleep(1)
-        """
         try:
-            claim_info = transfer_filter.get_new_entries()
-            if claim_info:
-                logyyx.info(claim_info)
+            logs = transfer_filter.get_new_entries()
+            if logs:
+                logyyx.info(logs)
+                if int(email_info["available"]):
+                    email.send(str(logs))
         except Exception as e: 
             logyyx.error(e.args)
             logyyx.error(traceback.format_exc())
-        """
+        time.sleep(1)
         #time.sleep(20)
         time.sleep(INTERVAL)
 
