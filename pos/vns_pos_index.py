@@ -46,6 +46,7 @@ class VnsPos:
         self.wallet_private_key = wallet_private_key
         self.receiving_address = Web3.toChecksumAddress(receiving_address)
         self.registered_url = registered_url
+        self.URL = URL
         self.GAS = GAS
         self.StakeAmount = StakeAmount
         self.VALIDATORS_PER_NET = VALIDATORS_PER_NET
@@ -293,7 +294,7 @@ class VnsPos:
                             "id": 1\
                         }
                 #code = requests.post(self.registered_url, data=json.dumps(proof_req), headers=headers).text #TODO
-                code = requests.post(URL, data=json.dumps(proof_req), headers=headers).text
+                code = requests.post(self.URL, data=json.dumps(proof_req), headers=headers).text
                 #print(code)
                 json_code = json.loads(code)
                 b = HexBytes(json_code["result"])
@@ -306,11 +307,14 @@ class VnsPos:
             self.logyyx.info("Not found my tx job. ")
 
     def feedbackFunc(self, index, address, duration):
-        point = 100 - duration/10
+        #point = 100 - duration/10
+        point = 90 - duration/10
         point = 100 if(point > 100) else point
         point = 1 if(point < 1) else point
         self.logyyx.info("Trying to feedback with point: {}".format(point))
         encodedABI = self.contract.encodeABI(fn_name="feedback", args = [index, address, int(point)])
+        #encodedABI = self.contract.encodeABI(fn_name="feedback", args = [index, address, 90])
+        #print(encodedABI)
         log =  self.send_vns_to_shit("feedback", encodedABI, address, 5)
         return log
 
@@ -521,6 +525,7 @@ if __name__ == "__main__":
     if(sys.argv[-1] == 'register'):
         vns_pos.try_register()
         exit(0)
+    email = ''
     if  int(email_info["available"]):
         email = Mail(email_info["from"], email_info["to"], email_info["pd"], email_info["host"])
     logyyx = vns_pos.logyyx
