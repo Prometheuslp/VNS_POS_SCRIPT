@@ -307,8 +307,8 @@ class VnsPos:
             self.logyyx.info("Not found my tx job. ")
 
     def feedbackFunc(self, index, address, duration):
-        #point = 100 - duration/10
-        point = 90 - duration/10
+        point = 100 - duration/10
+        #point = 90 - duration/10
         point = 100 if(point > 100) else point
         point = 1 if(point < 1) else point
         self.logyyx.info("Trying to feedback with point: {}".format(point))
@@ -399,8 +399,6 @@ class VnsPos:
             self.send_tx(value, Web3.toWei(50,'gwei'), nonce, encodedABI)
         else:
             self.logyyx.info("I have registered")
-
-
 
 
     def pos_contract(self):
@@ -539,6 +537,7 @@ if __name__ == "__main__":
         logyyx.error(e.args)
         logyyx.error(traceback.format_exc())
     time.sleep(1)
+    net_jobs_counter = 0
     while 1:
         try:
             current_period = vns_pos.period_call()
@@ -550,6 +549,7 @@ if __name__ == "__main__":
             current_score2 = vns_pos.score2_call()
             if current_period > pre_period:
                 vns_pos.pool_init()
+                net_jobs_counter = 0
                 pre_period = current_period
                 logyyx.info("pos period: {}".format(current_period))
                 if int(email_info["available"]):
@@ -563,11 +563,12 @@ if __name__ == "__main__":
                     send_info += "pos score2 : {}".format(current_score2) + "\n"
                     email.send(send_info)
         except Exception as e: 
+            net_jobs_counter = 0
             logyyx.error(e.args)
             logyyx.error(traceback.format_exc())
             if int(email_info["available"]):
                 email.send(str(traceback.format_exc()))
-            time.sleep(120)
+            time.sleep(60)
             continue
         time.sleep(1)
         logyyx.info("--------------------------------------")
@@ -590,7 +591,9 @@ if __name__ == "__main__":
             logyyx.error(traceback.format_exc())
         time.sleep(1)
         try:
-            vns_pos.try_netjob()
+            if net_jobs_counter < 10: 
+                vns_pos.try_netjob()
+                net_jobs_counter += 1
         except Exception as e: 
             logyyx.error(e.args)
             logyyx.error(traceback.format_exc())
@@ -600,7 +603,7 @@ if __name__ == "__main__":
         except Exception as e: 
             logyyx.error(e.args)
             logyyx.error(traceback.format_exc())
-        #time.sleep(60)
+        #time.sleep(20)
         time.sleep(INTERVAL)
 
 
