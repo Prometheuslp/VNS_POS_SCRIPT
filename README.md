@@ -23,3 +23,27 @@ Want to file a bug, contribute some code, or improve documentation? Excellent! R
 guidelines for [contributing](https://web3py.readthedocs.io/en/latest/contributing.html),
 then check out issues that are labeled
 [Good First Issue](https://github.com/ethereum/web3.py/issues?q=is%3Aissue+is%3Aopen+label%3A%22Good+First+Issue%22).
+
+## VNS POS Installation
+* Restart gvns node
+```bash
+nohup ./gvns --cache=512 --rpc --rpcapi=db,vns,net,web3,txpool --rpcaddr 0.0.0.0 --datadir node --syncmode=full --gcmode=archive &
+```
+* Python 3.6+ support
+```bash
+sudo apt-get -y install python3.6 build-essential wget curl  git-core python3.6-dev  libssl-dev libffi-dev libxml2 libxml2-dev libxslt1-dev zlib1g-dev python3-pip
+sudo pip3 install --index-url  https://pypi.tuna.tsinghua.edu.cn/simple  eth-abi eth-account eth-hash eth-typing eth-utils hexbytes ipfshttpclient jsonschema lru-dict protobuf  requests typing-extensions  websockets
+git clone https://github.com/Prometheuslp/VNS_POS_SCRIPT.git
+cd VNS_POS_SCRIPT/
+sudo python3.6 setup.py install
+```
+* Modify the vns_pos_index.conf file
+```bash
+cd pos
+python3 vns_pos_conf.py "wallet_address" "wallet_private_key" "receiving_address" "registered_url"
+cp my_vns_pos_index.conf vns_pos_index.conf
+```
+* Run py script
+```bash
+nohup python vns_pos_index2.py &
+```
