@@ -500,9 +500,10 @@ def log_loop(poll_interval, logyyx, email, available, wallet_address, contract):
                 value = event.args.value
                 value = value / 1e+18
                 info = {"server":server, "value":value}
-                logyyx.info(info)
+                period = contract.functions.period().call()
+                logyyx.info(str(period - 1) + " : " + str(info))
                 if wallet_address.upper() == server.upper():
-                    logyyx.info(str(info))
+                    logyyx.info(str(period) + " : " + str(info))
                     if int(available):
                         email.send(str(info))
         except Exception as e: 
