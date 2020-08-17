@@ -19,6 +19,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.header import Header
 from threading import Thread
+import socket
 
  
 ###########################################################################################
@@ -513,6 +514,26 @@ def log_loop(poll_interval, logyyx, email, available, wallet_address, contract):
         count += 1
         time.sleep(poll_interval)
 
+class TCPServer:
+    def start(self,port=9999,host='0.0.0.0'):
+        # create a socket object
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+        s.bind((host, port))
+        # start listening for connections
+        s.listen(5)
+        print("heart beat server is Listening at", s.getsockname())
+        while True:
+            conn, addr = s.accept()
+            now = time.strftime("%Y-%m-%d %H:%M:%S")
+            msg = "It's %s, and I'm alive!" % now
+            conn.sendall(msg.encode('utf-8'))
+            conn.close()
+    
+def heart_beat():
+    server = TCPServer()
+    server.start()
+
 
 if __name__ == "__main__":
     if  int(remote_node["available"]):
@@ -537,6 +558,12 @@ if __name__ == "__main__":
         logyyx.error(e.args)
         logyyx.error(traceback.format_exc())
     time.sleep(1)
+    try:
+        watch = Thread(target=heart_beat, daemon=True)
+        watch.start()
+    except Exception as e: 
+        logyyx.error(e.args)
+        logyyx.error(traceback.format_exc())
     net_jobs_counter = 0
     while 1:
         try:
