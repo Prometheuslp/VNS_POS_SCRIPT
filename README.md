@@ -45,5 +45,5 @@ cp my_vns_pos_index.conf vns_pos_index.conf
 ```
 * Run py script
 ```bash
-nohup python vns_pos_index2.py &
+nohup python3 vns_pos_index.py &
 ```
