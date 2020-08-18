@@ -397,7 +397,10 @@ class VnsPos:
             encodedABI = self.contract.encodeABI(fn_name="register", args = [self.registered_url, self.receiving_address])
             nonce = self.get_nonce(self.wallet_address)
             value = Web3.toWei(self.StakeAmount, 'ether')
-            self.send_tx(value, Web3.toWei(50,'gwei'), nonce, encodedABI)
+            status, txn_hash = self.send_tx(value, Web3.toWei(50,'gwei'), nonce, encodedABI)
+            if not status:
+                self.logyyx.info(self.w3.eth.waitForTransactionReceipt(txn_hash))
+                self.logyyx.info(txn_hash)
         else:
             self.logyyx.info("I have registered")
 
