@@ -45,8 +45,8 @@ class VnsPos:
     def __init__(self, wallet_address, wallet_private_key, receiving_address, registered_url, GAS, StakeAmount, VALIDATORS_PER_NET, URL = "http://localhost:8585"):
         self.wallet_address = Web3.toChecksumAddress(wallet_address)
         self.wallet_private_key = wallet_private_key
-        #self.receiving_address = Web3.toChecksumAddress(receiving_address)
-        self.receiving_address = receiving_address
+        self.receiving_address = Web3.toChecksumAddress(receiving_address)
+        #self.receiving_address = receiving_address
         self.registered_url = registered_url
         self.URL = URL
         self.GAS = GAS
