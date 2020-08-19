@@ -45,7 +45,8 @@ class VnsPos:
     def __init__(self, wallet_address, wallet_private_key, receiving_address, registered_url, GAS, StakeAmount, VALIDATORS_PER_NET, URL = "http://localhost:8585"):
         self.wallet_address = Web3.toChecksumAddress(wallet_address)
         self.wallet_private_key = wallet_private_key
-        self.receiving_address = Web3.toChecksumAddress(receiving_address)
+        #self.receiving_address = Web3.toChecksumAddress(receiving_address)
+        self.receiving_address = receiving_address
         self.registered_url = registered_url
         self.URL = URL
         self.GAS = GAS
@@ -162,6 +163,8 @@ class VnsPos:
             'data': data,
             'nonce': nonce,
         }
+        if not data:
+            return 1, "Missing encodedABI"
         signed_txn = self.w3.eth.account.signTransaction(txn_dict, self.wallet_private_key)
         try:
             txn_hash = self.w3.eth.sendRawTransaction(signed_txn.rawTransaction.hex())
@@ -441,17 +444,18 @@ class VnsPos:
         return dividend
 
 class Mail:
-    def __init__(self, sender, receiver, mail_pass, mail_host = "smtp.qq.com"):
+    def __init__(self, sender, receiver, mail_pass, mail_host = "smtp.qq.com", subject = "VNS POS"):
         self.mail_host = mail_host
         self.mail_pass = mail_pass
         self.sender = sender
         self.receiver = [receiver]
+        self.subject = subject
     def send(self, content):
         content = content
         message = MIMEText(content, 'plain', 'utf-8')
         message['From'] = Header(self.sender, 'utf-8')
         message['To'] =  Header(self.receiver[0], 'utf-8')
-        subject = 'VNS POS'
+        subject = self.subject
         message['Subject'] = Header(subject, 'utf-8')
         try:
             smtpObj = smtplib.SMTP_SSL(self.mail_host, 465)
@@ -508,7 +512,7 @@ def log_loop(poll_interval, logyyx, email, available, wallet_address, contract):
                 if wallet_address.upper() == server.upper():
                     logyyx.info(str(period) + " : " + str(info))
                     if int(available):
-                        email.send(str(info))
+                        email.send(str(period) + " : " + str(info))
         except Exception as e: 
             logyyx.error(e.args)
             try:
@@ -550,7 +554,7 @@ if __name__ == "__main__":
         exit(0)
     email = ''
     if  int(email_info["available"]):
-        email = Mail(email_info["from"], email_info["to"], email_info["pd"], email_info["host"])
+        email = Mail(email_info["from"], email_info["to"], email_info["pd"], email_info["host"], "VNS POS {}".format(registered_url))
     logyyx = vns_pos.logyyx
     vns_pos.check_address()
     pre_period  = 0
@@ -584,7 +588,7 @@ if __name__ == "__main__":
                 pre_period = current_period
                 logyyx.info("pos period: {}".format(current_period))
                 if int(email_info["available"]):
-                    send_info = ""
+                    send_info = "wallet_address : {} \nregistered_url :{} \n".format(wallet_address, registered_url)
                     send_info += "pos starttime : {}".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(current_starttime))) + '\n'
                     send_info += "pos endtime : {}".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(current_endtime))) + "\n"
                     send_info += "pos divNumber : {}".format(current_divNumber) + "\n"
