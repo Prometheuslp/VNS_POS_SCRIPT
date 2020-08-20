@@ -659,8 +659,8 @@ if __name__ == "__main__":
         except Exception as e: 
             logyyx.error(e.args)
             logyyx.error(traceback.format_exc())
-        time.sleep(20)
-        #time.sleep(INTERVAL)
+        #time.sleep(20)
+        time.sleep(INTERVAL)
 
 
  
