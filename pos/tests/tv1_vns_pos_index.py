@@ -54,10 +54,10 @@ class VnsPos:
         self.VALIDATORS_PER_NET = VALIDATORS_PER_NET
         self.contract_address = Web3.toChecksumAddress("0xDb6887c996428E657B79988993296601d2a32054")
         self.w3 = Web3(HTTPProvider(URL))
-        self.job_pool = {'claim':{}, 'prove':{}, 'prepare':{}}
+        self.job_pool = {'claim':{}, 'prove':{}, 'prepare':{}, 'open':{}}
         self.shit_pool = {'checkin':{}, 'feedback':{}}
         self.logyyx = Logger('tv1_vns_pos.log', logging.INFO, logging.INFO)
-        with open("../vns_pos_abi.json", encoding="utf-8") as f:
+        with open("./vns.abi", encoding="utf-8") as f:
             self.contract_abi = json.load(f)
         self.contract = self.w3.eth.contract(address = self.contract_address, abi = self.contract_abi)
 
@@ -190,11 +190,13 @@ class VnsPos:
 
     def send_vns_to_contract(self, func, encodedABI, interval = 5):
         gasprice = self.w3.eth.gasPrice
+        owner = self.contract.functions.owner().call()
+        isonwer = (owner.upper() == self.wallet_address.upper())
         if self.job_pool[func]:
             if not self.txpool_content_status(self.job_pool[func]["nonce"]):
                 nonce = self.get_nonce(self.wallet_address)
-                if func == "open":
-                    status, txn_hash = self.send_tx(Web3.toWei(50, 'ether'), gasprice, nonce, encodedABI)
+                if func == "claim" and isonwer:
+                    status, txn_hash = self.send_tx(Web3.toWei(50, 'ether'), int(gasprice * 1.1), nonce, encodedABI)
                 else:
                     status, txn_hash = self.send_tx(0, gasprice, nonce, encodedABI)
                 if not status:
@@ -212,7 +214,7 @@ class VnsPos:
                 if gasprice_raw == self.job_pool[func]["gasprice"]:
                     return
                 else:
-                    if func == "open":
+                    if func == "claim" and isonwer:
                         status, txn_hash = self.send_tx(Web3.toWei(50, 'ether'), self.job_pool[func]["gasprice"], self.job_pool[func]["nonce"], encodedABI)
                     else:
                         status, txn_hash = self.send_tx(0, self.job_pool[func]["gasprice"], self.job_pool[func]["nonce"], encodedABI)
@@ -222,8 +224,8 @@ class VnsPos:
                 return
         else:
             nonce = self.get_nonce(self.wallet_address)
-            if func == "open":
-                status, txn_hash = self.send_tx(Web3.toWei(50, 'ether'), gasprice, nonce, encodedABI)
+            if func == "claim" and isonwer:
+                status, txn_hash = self.send_tx(Web3.toWei(50, 'ether'), int(gasprice * 1.1), nonce, encodedABI)
             else:
                 status, txn_hash = self.send_tx(0, gasprice, nonce, encodedABI)
             if not status:
@@ -338,7 +340,7 @@ class VnsPos:
         netjob_size  = self.contract.functions.get_netjob_length(period).call()
         netjob = 0
         for i in range(netjob_size):
-            validators = self.contract.functions.get_netjob(period, i).call()
+            validators = self.contract.functions.get_netjob(period, i).call({"from": self.wallet_address})
             server_address = validators[0]
             for j in range(self.VALIDATORS_PER_NET):
                 validator = validators[4][j]
@@ -389,13 +391,13 @@ class VnsPos:
         #self.logyyx.info("Trying to open new period...")#TODO
         timestamp = self.w3.eth.getBlock("latest")["timestamp"]
         nonce = self.w3.eth.getBlock("latest")["nonce"]
-        endtime = self.contract.functions.endtime().call() 
         owner = self.contract.functions.owner().call()
-        if owner.upper() == wallet_address.upper():
-            if (timestamp < endtime):
-                nonce = HexBytes(nonce)  # owner can also send any different nonce.
+        endtime = self.contract.functions.endtime().call()
+        if owner.upper() == self.wallet_address.upper():
+            if (timestamp > endtime):
+                nonce  = Web3.toBytes(nonce.hex())
                 self.logyyx.info("Trying to open new period...");
-                encodedABI = self.contract.encodeABI(fn_name="open")
+                encodedABI = self.contract.encodeABI(fn_name="open", args = [nonce])
                 self.send_vns_to_contract("open",  encodedABI,  5)
             else:
                 self.job_pool['open'] = {}
@@ -568,7 +570,7 @@ if __name__ == "__main__":
         vns_pos = VnsPos(wallet_address, wallet_private_key, receiving_address, registered_url, GAS, StakeAmount, VALIDATORS_PER_NET, remote_node["url"])
     else:
         vns_pos = VnsPos(wallet_address, wallet_private_key, receiving_address, registered_url, GAS, StakeAmount, VALIDATORS_PER_NET)
-        vns_pos.check_net()
+        #vns_pos.check_net()
     if(sys.argv[-1] == 'register'):
         vns_pos.try_register()
         exit(0)
@@ -587,12 +589,6 @@ if __name__ == "__main__":
         logyyx.error(e.args)
         logyyx.error(traceback.format_exc())
     time.sleep(1)
-    try:
-        watch = Thread(target=heart_beat, daemon=True)
-        watch.start()
-    except Exception as e: 
-        logyyx.error(e.args)
-        logyyx.error(traceback.format_exc())
     net_jobs_counter = 0
     while 1:
         try:
@@ -660,6 +656,7 @@ if __name__ == "__main__":
             logyyx.error(e.args)
             logyyx.error(traceback.format_exc())
         #time.sleep(20)
+        #break
         time.sleep(INTERVAL)
 
 
