@@ -492,7 +492,7 @@ class Logger:
         self.logger.critical(message)
 
 
-def log_loop(poll_interval, logyyx, email, available, wallet_address, contract):
+def log_loop(poll_interval, logyyx, email, available, wallet_address, contract, reward_log):
     #transfer_filter = contract.events.Claim.createFilter(fromBlock="0x0", argument_filters={'server':wallet_address})
     transfer_filter = contract.events.Claim.createFilter(fromBlock="0x0")
     count = 0
@@ -511,6 +511,7 @@ def log_loop(poll_interval, logyyx, email, available, wallet_address, contract):
                 logyyx.info(str(period - 1) + " : " + str(info))
                 if wallet_address.upper() == server.upper():
                     logyyx.info(str(period) + " : " + str(info))
+                    reward_log.info(str(period) + " : " + str(info))
                     if int(available):
                         email.send(str(period) + " : " + str(info))
         except Exception as e: 
@@ -532,11 +533,18 @@ class TCPServer:
         s.listen(5)
         print("heart beat server is Listening at", s.getsockname())
         while True:
-            conn, addr = s.accept()
-            now = time.strftime("%Y-%m-%d %H:%M:%S")
-            msg = "It's %s, and I'm alive!" % now
-            conn.sendall(msg.encode('utf-8'))
-            conn.close()
+            try:
+                conn, addr = s.accept()
+                now = time.strftime("%Y-%m-%d %H:%M:%S")
+                msg = "It's %s, and I'm alive!" % now
+                conn.sendall(msg.encode('utf-8'))
+                conn.close()
+            except Exception as e: 
+                logyyx.error(e.args)
+                logyyx.error(traceback.format_exc())
+            time.sleep(4)
+            
+            
     
 def heart_beat():
     server = TCPServer()
@@ -559,8 +567,9 @@ if __name__ == "__main__":
     vns_pos.check_address()
     pre_period  = 0
     contract = vns_pos.pos_contract()
+    reward_log = Logger('vns_pos_reward.log', logging.INFO, logging.INFO)
     try:
-        worker = Thread(target=log_loop, args=(60, logyyx, email, email_info["available"], wallet_address,contract), daemon=True)
+        worker = Thread(target=log_loop, args=(60, logyyx, email, email_info["available"], wallet_address,contract, reward_log), daemon=True)
         worker.start()
     except Exception as e: 
         logyyx.error(e.args)
@@ -603,7 +612,7 @@ if __name__ == "__main__":
             logyyx.error(traceback.format_exc())
             if int(email_info["available"]):
                 email.send(str(traceback.format_exc()))
-            time.sleep(60)
+            time.sleep(600)
             continue
         time.sleep(1)
         logyyx.info("--------------------------------------")
