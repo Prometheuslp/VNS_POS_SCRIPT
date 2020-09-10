@@ -107,7 +107,7 @@ class VnsPos:
             self.logyyx.error(e.args)
             return True,e.args
         if sync:
-            return True,e.args
+            return True,"sync"
         else:
             return False
 
